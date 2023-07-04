@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Physics Simulation with Matter.js</title>
+    <style>
+        body {
+            padding: 0;
+            margin: 0;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #gravityInput {
+            position: absolute;
+            bottom: 80px;
+            left: 20px;
+            padding: 5px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            font-size: 16px;
+        }
+
+        #addBall {
+            position: absolute;
+            bottom: 80px;
+            left: 140px;
+            padding: 10px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        #addBall:hover {
+            background-color: #45a049;
+        }
+
+        #ballCount {
+            position: absolute;
+            bottom: 80px;
+            left: 390px;
+            font-size: 18px;
+        }
+
+
+
+        
+
+
+    </style>
+</head>
+<body>
+    <div>
+    <label for="gravityInput" style="display: inline-block;  position: absolute;
+            bottom: 110px;
+            left: 20px;
+            padding: 5px;
+            font-size: 16px;">Гравитация: </label>
+    <input id="gravityInput" type="number" value="1" min="0" max="10" step="0.1" />
+    </div>
+    <button id="addBall">Add Ball</button>
+    <div id="ballCount">Ball Count: 0</div>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/matter-js/0.14.2/matter.min.js"></script>
+    <script>
+        // Модульные импорты Matter.js
+        var Engine = Matter.Engine,
+            Render = Matter.Render,
+            World = Matter.World,
+            Bodies = Matter.Bodies,
+            Events = Matter.Events,
+            Composite = Matter.Composite;
+
+        // Создание движка и рендера
+        var engine = Engine.create();
+
+        var render = Render.create({
+            element: document.body,
+            engine: engine,
+            options: {
+                wireframes: false
+            }
+        });
+
+        // Создаем "землю", от которой будет отскакивать шар
+        var ground = Bodies.rectangle(render.canvas.width / 2, render.canvas.height, render.canvas.width, 60, {
+            isStatic: true,
+            restitution: 1.0,  // обеспечиваем отскок земли
+            render: {
+                visible: true
+            }
+        });
+        
+        World.add(engine.world, ground);  // Добавляем землю в мир
+
+        // Функция создания шара
+        function createBall() {
+            var ball = Bodies.circle(Math.random() * render.canvas.width, 0, 40, {
+                restitution: 1.0, // обеспечиваем отскок шара
+                friction: 0,      // отключаем трение
+                frictionAir: 0,   // отключаем воздушное сопротивление
+                render: {
+                    fillStyle: getRandomColor() // Даем шару случайный цвет при создании
+                }
+            });
+
+            World.add(engine.world, ball);
+            ballCount++;
+            updateBallCount();
+        }
+
+        // Счетчик шаров
+        var ballCount = 0;
+        var ballCountElement = document.getElementById('ballCount');
+
+        // Функция для генерации случайного цвета
+        function getRandomColor() {
+            var letters = '0123456789ABCDEF';
+            var color = '#';
+            for (var i = 0; i < 6; i++) {
+                color += letters[Math.floor(Math.random() * 16)];
+            }
+            return color;
+        }
+
+        // Слушатель столкновения шара
+        Events.on(engine, 'collisionStart', function(event) {
+            var pairs = event.pairs;
+
+            for (var i = 0; i < pairs.length; i++) {
+                var pair = pairs[i];
+                pair.bodyA.render.fillStyle = getRandomColor();
+                pair.bodyB.render.fillStyle = getRandomColor();
+            }
+        });
+
+        // Обработка ухода шара за пределы экрана
+        Events.on(engine, 'afterUpdate', function () {
+            var balls = Composite.allBodies(engine.world);
+
+            for (var i = 0; i < balls.length; i++) {
+                var ball = balls[i];
+                if (ball.position.y > render.canvas.height || ball.position.x < 0 || ball.position.x > render.canvas.width) {
+                    if (!ball.isRemoved) {  // Изменено
+                        setTimeout(function() {
+                            World.remove(engine.world, ball);
+                            ballCount--;
+                            updateBallCount();
+                        }, 0);
+                    }
+                }
+            }
+        });
+
+        // Функция обновления счетчика шаров
+        function updateBallCount() {
+            ballCountElement.innerHTML = 'Ball Count: ' + ballCount;
+        }
+
+        // Сначала создаем один шар
+        createBall();
+
+        // Обработка изменения гравитации
+        document.getElementById('gravityInput').addEventListener('input', function (e) {
+            engine.world.gravity.y = e.target.value;
+        });
+
+        // Обработка нажатия кнопки для добавления нового шара
+        document.getElementById('addBall').addEventListener('click', createBall);
+
+        // Запуск движка и рендера
+        Engine.run(engine);
+        Render.run(render);
+    </script>
+</body>
+</html>
